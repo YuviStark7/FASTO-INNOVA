@@ -1,0 +1,9 @@
+{
+  "name": "Fasto Innova",
+  "short_name": "Fasto",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#15100f",
+  "theme_color": "#962524",
+  "icons": []
+}

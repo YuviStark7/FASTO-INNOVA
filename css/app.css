@@ -1,0 +1,160 @@
+/* ============================================================
+   FASTO INNOVA — App layout (shell, dashboard, clients, chatbot)
+   ============================================================ */
+
+/* ================= ONBOARDING ================= */
+#onboard{ min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;
+  background:linear-gradient(rgba(10,6,6,.55), rgba(10,6,6,.8)), url('../assets/hero-farm.png') center/cover; }
+.onboard-card{ width:100%; max-width:440px; background:#1c1414; border:1px solid var(--hairline); border-radius:var(--radius-xl); padding:28px; box-shadow:var(--shadow-1); }
+.brand-mark{ display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+.brand-mark img{ width:26px; height:26px; }
+.brand-word b{ font-weight:700; } .brand-word span{ font-weight:400; color:var(--ink-70); }
+.tag{ color:var(--ink-70); font-size:13px; margin-bottom:20px; }
+.mode-toggle{ display:flex; background:var(--white-15); border-radius:var(--radius-sm); padding:4px; gap:4px; margin-bottom:16px; }
+.mode-toggle button{ flex:1; border:none; background:transparent; color:var(--ink-70); padding:10px 8px; border-radius:8px; font-weight:700; font-size:12.5px; }
+.mode-toggle button.active{ background:var(--red); color:#fff; }
+.field{ margin-bottom:12px; }
+.field label{ display:block; font-size:12px; color:var(--ink-70); margin-bottom:6px; font-weight:700; }
+.field input,.field select{ width:100%; background:var(--white-15); border:1px solid transparent; border-radius:var(--radius-sm); padding:10px 12px; color:#fff; outline:none; }
+.field input::placeholder{ color:var(--ink-50); }
+.onboard-hint{ font-size:11.5px; color:var(--ink-50); margin:-4px 0 12px; line-height:1.5; }
+.onboard-hint a{ color:#e8a09f; }
+.onboard-note{ margin-top:18px; font-size:11.5px; color:var(--ink-50); line-height:1.6; border-top:1px solid var(--hairline); padding-top:14px; }
+
+/* ================= APP SHELL ================= */
+/* Fixed-height shell: #app is exactly one viewport tall and never grows.
+   Every screen scrolls INSIDE itself (see min-height:0 + overflow-y:auto
+   on the panels below) instead of pushing this shell taller. */
+#app{ display:none; }
+#app.ready{ display:flex; gap:22px; padding:22px; height:100vh; align-items:stretch; }
+
+/* ---- sidebar ---- */
+#sidebar{ width:195px; flex-shrink:0; background:var(--red); border-radius:var(--radius-xl); padding:16px 10px; display:flex; flex-direction:column; gap:6px; position:sticky; top:22px; height:calc(100vh - 44px); box-shadow:var(--shadow-2); }
+.side-brand{ display:flex; align-items:center; gap:9px; padding:8px 8px 18px; }
+.side-brand img{ width:20px; height:19px; }
+.side-brand .wordmark{ font-size:16px; letter-spacing:.01em; }
+.side-brand .wordmark b{ font-weight:700; } .side-brand .wordmark span{ font-weight:400; opacity:.85; }
+
+.nav-item{ display:flex; align-items:center; gap:12px; height:46px; padding:0 12px; border-radius:var(--radius-sm); color:#fff; opacity:.55; transition:opacity .15s ease, background .15s ease; }
+.nav-item .ic-svg{ opacity:.95; }
+.nav-item span.label{ font-size:12.5px; font-weight:700; letter-spacing:.03em; text-transform:uppercase; }
+.nav-item:hover{ opacity:.85; }
+.nav-item.active{ opacity:1; background:var(--pill-active); }
+
+.side-bottom{ margin-top:auto; padding-top:10px; }
+.status-item{ display:flex; align-items:center; gap:12px; height:46px; padding:0 12px; border-radius:var(--radius-sm); background:var(--pill-active); color:#fff; }
+.status-item span.label{ font-size:11px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; }
+
+/* ---- main / hero frame (shared full-bleed photo behind all 3 screens) ---- */
+#main{ flex:1; min-width:0; border-radius:var(--radius-xl); overflow:hidden; position:relative; height:calc(100vh - 44px);
+  background-image:linear-gradient(to bottom, rgba(10,6,6,.05) 0%, rgba(8,5,5,.65) 100%), url('../assets/hero-farm.png');
+  background-size:cover; background-position:center; display:flex; flex-direction:column; }
+
+#topbar{ margin:20px 20px 0; border-radius:var(--radius-lg); padding:13px 18px; display:flex; align-items:center; gap:16px; }
+#topbar .who{ font-size:14px; font-weight:400; text-transform:uppercase; letter-spacing:.02em; }
+#topbar .who b{ font-weight:700; }
+#topbar .header-avatar{ width:38px; height:38px; }
+.search-wrap{ display:flex; align-items:center; gap:8px; background:var(--white-15); border-radius:var(--radius-sm); padding:8px 12px; min-width:200px; }
+.search-wrap input{ background:transparent; border:none; outline:none; color:#fff; flex:1; font-size:12.5px; }
+.search-wrap input::placeholder{ color:var(--ink-50); }
+
+.screen{ display:none; flex:1; min-height:0; flex-direction:column; padding:18px 20px 20px; }
+.screen.active{ display:flex; }
+
+/* ================= DASHBOARD ================= */
+#dashboardScreen{ justify-content:flex-end; }
+.research-panel{ border-radius:var(--radius-lg); padding:18px 20px 8px; max-height:100%; overflow-y:auto; }
+.research-panel-head{ display:flex; align-items:center; margin-bottom:12px; }
+.research-panel-head .see-all{ margin-left:auto; font-size:11.5px; font-weight:700; color:var(--ink-50); background:none; border:none; letter-spacing:.03em; text-transform:uppercase; }
+.research-panel-head .see-all:hover{ color:#fff; }
+
+.rp-table{ width:100%; border-collapse:collapse; }
+.rp-table th{ text-align:left; font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-50); font-weight:700; padding:0 10px 10px; }
+.rp-table td{ padding:12px 10px; border-top:1px solid var(--hairline); vertical-align:middle; font-size:13px; }
+.rp-conv b{ display:block; font-size:13px; } .rp-conv small{ color:var(--ink-50); font-size:11px; }
+.rp-price{ font-weight:700; cursor:pointer; } .rp-price:hover{ text-decoration:underline; }
+.rp-prog{ min-width:130px; }
+.rp-prog .prog-label{ font-size:10.5px; color:var(--ink-50); margin-top:5px; }
+
+/* ================= CLIENTS ================= */
+#clientsScreen{ min-height:0; }
+.clients-outer{ border-radius:var(--radius-lg); padding:16px; flex:1; display:flex; gap:14px; min-height:0; }
+.client-list-panel{ width:320px; flex-shrink:0; border-radius:var(--radius-lg); padding:8px; overflow-y:auto; }
+.client-item{ display:flex; align-items:center; gap:10px; padding:10px; border-radius:var(--radius-md); cursor:pointer; }
+.client-item:hover{ background:rgba(255,255,255,.06); }
+.client-item.active{ background:var(--pill-active); }
+.ci-top{ display:flex; align-items:center; gap:6px; }
+.ci-name{ font-size:13px; font-weight:700; }
+.ci-prev{ font-size:11.5px; color:var(--ink-50); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:210px; }
+
+.chat-box-panel{ flex:1; min-width:0; border-radius:var(--radius-lg); display:flex; flex-direction:column; min-height:0; }
+.thread-head{ display:flex; align-items:center; gap:10px; padding:14px 16px; border-bottom:1px solid var(--hairline); }
+.thread-body{ flex:1; min-height:0; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:10px; }
+.day-divider{ align-self:center; font-size:10.5px; color:var(--ink-50); background:rgba(255,255,255,.08); padding:4px 12px; border-radius:999px; margin:4px 0; }
+
+.bubble{ max-width:72%; padding:10px 14px; border-radius:16px; font-size:13px; line-height:1.5; }
+.bubble.out{ align-self:flex-end; background:var(--red); color:#fff; border-bottom-right-radius:4px; }
+.bubble.in{ align-self:flex-start; background:rgba(255,255,255,.14); border-bottom-left-radius:4px; }
+.bubble.meta{ align-self:center; background:none; color:var(--ink-50); font-size:11px; padding:2px; }
+.bubble-actions{ align-self:flex-end; display:flex; gap:8px; margin-top:-4px; }
+
+.thread-input-row{ display:flex; align-items:center; gap:10px; padding:12px 16px; border-top:1px solid var(--hairline); }
+.thread-input-row .input-glass{ flex:1; }
+.round-icon-btn{ width:36px; height:36px; border-radius:50%; border:none; background:var(--white-15); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.round-icon-btn:hover{ background:rgba(255,255,255,.24); }
+
+/* ================= FASTO-AI CHATBOT ================= */
+/* padding-right reserves the rail's footprint (220 width + 20 offset) PLUS
+   a 24px gap so the transcript, suggestion chips AND the prompt bar stay
+   clear of it with visible breathing room — position:absolute children
+   measure top/right/bottom from this padding edge, so the rail itself
+   doesn't move, only the normal-flow content does. */
+#assistantScreen{ position:relative; min-height:0; padding-right:264px; }
+.chat-history-rail{ position:absolute; top:18px; right:20px; bottom:18px; width:220px; border-radius:var(--radius-lg); padding:14px 10px; display:flex; flex-direction:column; overflow:hidden; z-index:2; }
+.new-chat-btn{ display:flex; align-items:center; gap:10px; padding:10px 10px; border-radius:var(--radius-md); background:var(--pill-active); border:none; color:#fff; font-weight:700; font-size:12.5px; text-transform:uppercase; letter-spacing:.02em; margin-bottom:10px; flex-shrink:0; }
+.new-chat-btn:hover{ background:rgba(255,255,255,.2); }
+.chat-rail-list{ flex:1; min-height:0; overflow-y:auto; display:flex; flex-direction:column; gap:2px; -webkit-mask-image:linear-gradient(to bottom, black 85%, transparent 100%); mask-image:linear-gradient(to bottom, black 85%, transparent 100%); }
+.chat-rail-item{ display:flex; align-items:center; gap:9px; padding:9px 8px; border-radius:var(--radius-sm); font-size:12px; color:var(--ink-70); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.chat-rail-item .ic-svg{ opacity:.6; flex-shrink:0; }
+.chat-rail-item:hover{ background:rgba(255,255,255,.08); }
+.chat-rail-item.active{ background:var(--pill-active); color:#fff; }
+
+/* No justify-content:flex-end here on purpose — combined with overflow-y:auto
+   on a flex column, flex-end makes overflowing content unscrollable in some
+   browsers (a known flexbox gotcha). renderTranscript() already scrolls to
+   the bottom on every update, so flex-start + JS autoscroll gets the same
+   "latest message visible" result without breaking scroll. */
+.assist-transcript{ flex:1; min-height:0; overflow-y:auto; display:flex; flex-direction:column; gap:12px; padding:8px 8px 16px 4px; }
+.assist-transcript .bubble{ box-shadow:var(--shadow-2); max-width:60%; }
+.typing-ind{ display:none; font-size:12px; color:var(--ink-50); padding:0 4px; }
+
+.chip-row{ display:flex; flex-wrap:wrap; gap:8px; padding:0 4px 10px; }
+.sugg-chip{ background:var(--white-15); border-radius:999px; padding:7px 13px; font-size:11.5px; color:var(--ink-70); cursor:pointer; }
+.sugg-chip:hover{ background:rgba(255,255,255,.24); color:#fff; }
+
+.prompt-bar{ margin-top:auto; border-radius:var(--radius-lg); padding:10px 14px; display:flex; align-items:center; gap:12px; box-shadow:var(--shadow-1); }
+.prompt-bar input{ flex:1; background:transparent; border:none; outline:none; color:#fff; font-size:13.5px; }
+.prompt-bar input::placeholder{ color:var(--ink-50); }
+
+/* ================= mobile ================= */
+@media (max-width: 900px){
+  .hide-mobile{ display:none !important; }
+  #app.ready{ padding:0; gap:0; flex-direction:column; }
+  #sidebar{ position:fixed; left:10px; right:10px; bottom:10px; top:auto; width:auto; min-height:0; flex-direction:row; align-items:center; padding:8px; border-radius:var(--radius-lg); z-index:50; }
+  .side-brand,.side-bottom{ display:none; }
+  .nav-item{ flex:1; flex-direction:column; height:auto; padding:8px 4px; gap:4px; }
+  .nav-item span.label{ font-size:9px; }
+  #main{ border-radius:0; height:100vh; margin:0; }
+  #topbar{ margin:12px 12px 0; }
+  #topbar .who{ font-size:12px; }
+  .screen{ padding:14px 12px 90px; }
+  .clients-outer{ flex-direction:column; }
+  .client-list-panel{ width:auto; max-height:220px; }
+  .chat-history-rail{ display:none; }
+  #assistantScreen{ padding-right:12px; }
+  .assist-transcript .bubble{ max-width:85%; }
+  .research-panel{ padding:14px; }
+  .rp-table thead{ display:none; }
+  .rp-table, .rp-table tbody, .rp-table tr, .rp-table td{ display:block; width:100%; }
+  .rp-table tr{ padding:10px 0; }
+}

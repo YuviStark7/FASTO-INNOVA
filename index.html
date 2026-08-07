@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#962524">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Fasto Innova">
+<link rel="manifest" href="manifest.json">
+<title>Fasto Innova — AI for Cassino Farmers</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<!-- ============ ONBOARDING ============ -->
+<div id="onboard">
+  <div class="onboard-card">
+    <div class="brand-mark"><img src="assets/logo-mark.svg" alt=""><span class="brand-word title-md"><b>FASTO</b><span> INNOVA</span></span></div>
+    <div class="tag">The AI that helps small farmers around Cassino sell directly to nearby buyers. Prototype — MVP demo.</div>
+
+    <div class="mode-toggle">
+      <button id="modeOffline" class="active" type="button">Offline demo (works instantly)</button>
+      <button id="modeLive" type="button">Live AI (needs API key)</button>
+    </div>
+
+    <div id="liveKeyBlock" style="display:none">
+      <div class="field">
+        <label for="apikey">Anthropic API key</label>
+        <input type="password" id="apikey" placeholder="sk-ant-...">
+      </div>
+      <div class="onboard-hint">Get one at <a href="https://console.anthropic.com" target="_blank" rel="noopener">console.anthropic.com</a> → API Keys. A full demo run costs a few cents. The key stays only in this browser — never saved to any file or repo.</div>
+      <div class="field">
+        <label for="model">AI model</label>
+        <select id="model">
+          <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 — fast &amp; cheap (recommended)</option>
+          <option value="claude-sonnet-5">Claude Sonnet 5 — smarter, slightly slower</option>
+        </select>
+      </div>
+      <div class="row gap-8" style="margin-top:10px">
+        <input type="checkbox" id="remember"> <label for="remember" style="margin:0;font-size:12.5px;color:var(--ink-50)">Remember key on this device only</label>
+      </div>
+    </div>
+
+    <button class="btn btn-primary" id="startBtn" style="width:100%;justify-content:center;margin-top:20px">Start Fasto Innova</button>
+
+    <div class="onboard-note"><b>Three brains:</b> Brain 1 interviews the farmer in plain language · Brain 2 matches &amp; ranks against a database of real Cassino buyers · Brain 3 (Guardian) validates everything moving between them, quietly, in the background.</div>
+  </div>
+</div>
+
+<!-- ============ APP SHELL ============ -->
+<div id="app">
+  <aside id="sidebar">
+    <div class="side-brand"><img src="assets/logo-mark.svg" alt=""><span class="wordmark"><b>FASTO</b><span> INNOVA</span></span></div>
+
+    <div class="nav-item" data-screen="dashboard"><img class="ic-svg" src="assets/icon-dashboard.svg" alt=""><span class="label">Dashboard</span></div>
+    <div class="nav-item" data-screen="clients"><img class="ic-svg" src="assets/icon-clients.svg" alt=""><span class="label">Clients</span></div>
+    <div class="nav-item" data-screen="assistant"><img class="ic-svg" src="assets/icon-ai.svg" alt=""><span class="label">Fasto - AI</span></div>
+
+    <div class="side-bottom">
+      <div class="status-item"><img class="ic-svg" src="assets/icon-offline.svg" alt=""><span class="label" id="modePill">Offline demo</span></div>
+    </div>
+  </aside>
+
+  <div id="main">
+    <header id="topbar" class="glass-45">
+      <div class="who">WELCOME, <b id="whoName">GUEST FARMER</b></div>
+      <div class="spacer hide-mobile"></div>
+      <div class="search-wrap hide-mobile"><img class="ic-svg sm" src="assets/icon-search.svg" alt=""><input type="text" id="topSearch" placeholder="Search chats, research…"></div>
+      <button class="icon-btn" id="bellBtn" title="Drafts ready"><img class="ic-svg sm" src="assets/icon-bell.svg" alt=""></button>
+      <button class="icon-btn" id="profileBtn" title="Restart / change mode" style="padding:0;overflow:hidden">
+        <img src="assets/avatar-profile.png" alt="" style="width:100%;height:100%;object-fit:cover">
+      </button>
+    </header>
+
+    <!-- ---------- DASHBOARD ---------- -->
+    <section class="screen" id="dashboardScreen">
+      <div class="research-panel glass-45">
+        <div class="research-panel-head">
+          <span class="title-md">Research Progress</span>
+          <button class="see-all" id="researchSeeAll">See all</button>
+        </div>
+        <table class="rp-table">
+          <thead><tr><th>Conversation</th><th>Targeted product</th><th>Quantity pledged</th><th>Price</th><th style="width:150px">Progress</th></tr></thead>
+          <tbody id="researchBody"></tbody>
+        </table>
+        <div class="empty-state" id="researchEmpty">No research yet — start a conversation in the Fasto-AI tab.</div>
+      </div>
+    </section>
+
+    <!-- ---------- CLIENTS ---------- -->
+    <section class="screen" id="clientsScreen">
+      <div class="clients-outer glass-45">
+        <div class="client-list-panel glass-30" id="clientList"></div>
+        <div class="chat-box-panel glass-30" id="threadPane"></div>
+      </div>
+    </section>
+
+    <!-- ---------- FASTO-AI ---------- -->
+    <section class="screen" id="assistantScreen">
+      <div class="chat-history-rail glass-20">
+        <button class="new-chat-btn" id="newChatBtn"><img class="ic-svg sm" src="assets/icon-new-chat.svg" alt="">Start New Chat</button>
+        <div class="chat-rail-list" id="chatRailList"></div>
+      </div>
+
+      <div class="err-banner" id="errBanner"></div>
+      <div class="assist-transcript" id="assistTranscript"></div>
+      <div class="typing-ind" id="typingInd">Fasto is thinking…</div>
+      <div class="chip-row" id="chipRow">
+        <span class="sugg-chip" data-fill="Hi! I'm a farmer near Sant'Elia Fiumerapido. I have about 80 kg of tomatoes and 40 kg of zucchine per week in summer. Not certified organic. What can I do in Cassino?">Demo farmer (EN)</span>
+        <span class="sugg-chip" data-fill="Buongiorno! Sono Marco, ho un piccolo terreno vicino Cervaro: circa 60 kg di pomodori e 30 kg di fagioli cannellini a settimana, da giugno a ottobre. Niente certificazione bio.">Contadino demo (IT)</span>
+        <span class="sugg-chip" data-fill="I grow chestnuts near Terelle, around 150 kg per week in October and November. Who could buy them in Cassino?">Autumn chestnuts</span>
+      </div>
+      <div class="prompt-bar glass-15">
+        <button class="round-icon-btn" id="attachBtn" title="Attach (not needed for this demo)"><img class="ic-svg sm" src="assets/icon-attach.svg" alt=""></button>
+        <input type="text" id="userInput" placeholder="Type your message here" autocomplete="off">
+        <button class="round-icon-btn" id="sendBtn" title="Send"><img class="ic-svg sm" src="assets/icon-send.svg" alt=""></button>
+      </div>
+    </section>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="js/data.js"></script>
+<script src="js/core.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

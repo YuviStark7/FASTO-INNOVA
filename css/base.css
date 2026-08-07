@@ -1,0 +1,135 @@
+/* ============================================================
+   FASTO INNOVA — Design tokens, resets, base components
+   Sourced from Figma "DOLCE MERAVGLIA" file (frames 27562:32171 /
+   32267 / 32386). Dark brick-red sidebar, translucent black glass
+   panels floating over a full-bleed farm photo, Roboto type.
+   ============================================================ */
+
+:root{
+  --red: #962524;
+  --red-dark: #7a1e1d;
+  --red-soft: rgba(150,37,36,.18);
+
+  --page-bg: #15100f;
+  --ink: #ffffff;
+  --ink-70: rgba(255,255,255,.70);
+  --ink-50: rgba(255,255,255,.50);
+  --ink-30: rgba(255,255,255,.30);
+
+  --glass-05: rgba(0,0,0,.05);
+  --glass-15: rgba(0,0,0,.15);
+  --glass-20: rgba(0,0,0,.20);
+  --glass-30: rgba(0,0,0,.30);
+  --glass-45: rgba(0,0,0,.45);
+  --pill-active: rgba(255,255,255,.11);
+  --white-15: rgba(255,255,255,.15);
+  --hairline: rgba(255,255,255,.12);
+
+  --ok: #3ba55d;
+  --warn: #d9a441;
+  --danger: #d9534f;
+  --blue: #4a86c9;
+
+  --radius-xl: 20px;
+  --radius-lg: 16px;
+  --radius-md: 12px;
+  --radius-sm: 10px;
+
+  --font: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --shadow-1: 0 8px 24px rgba(0,0,0,.35);
+  --shadow-2: 0 4px 14px rgba(0,0,0,.45);
+}
+
+*{ box-sizing:border-box; }
+html,body{ height:100%; overflow:hidden; }
+body{
+  margin:0; font-family:var(--font); background:var(--page-bg); color:var(--ink);
+  -webkit-font-smoothing:antialiased; font-size:14.5px; line-height:1.45;
+}
+img{ max-width:100%; display:block; }
+button,input,select,textarea{ font-family:inherit; font-size:inherit; color:inherit; }
+button{ cursor:pointer; }
+a{ color:inherit; }
+::-webkit-scrollbar{ width:8px; height:8px; }
+::-webkit-scrollbar-thumb{ background:rgba(255,255,255,.25); border-radius:8px; }
+::-webkit-scrollbar-track{ background:transparent; }
+
+.hide-mobile{ display:flex; }
+.row{ display:flex; align-items:center; }
+.col{ display:flex; flex-direction:column; }
+.gap-8{ gap:8px; } .gap-10{ gap:10px; } .gap-14{ gap:14px; }
+.spacer{ flex:1; }
+
+/* ---------- typography helpers ---------- */
+.title-lg{ font-size:22px; font-weight:700; margin:0; }
+.title-md{ font-size:17px; font-weight:700; margin:0; }
+.title-sm{ font-size:14.5px; font-weight:700; margin:0; }
+.foot{ font-size:12px; color:var(--ink-50); }
+.foot-strong{ font-size:12.5px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--ink-70); }
+.eyebrow{ font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-50); font-weight:700; }
+
+/* ---------- icons ---------- */
+.ic-svg{ width:20px; height:20px; flex-shrink:0; }
+.ic-svg.sm{ width:16px; height:16px; }
+
+/* ---------- glass surfaces ---------- */
+.glass-45{ background:var(--glass-45); backdrop-filter:blur(18px) saturate(140%); -webkit-backdrop-filter:blur(18px) saturate(140%); }
+.glass-30{ background:var(--glass-30); backdrop-filter:blur(14px) saturate(140%); -webkit-backdrop-filter:blur(14px) saturate(140%); }
+.glass-20{ background:var(--glass-20); backdrop-filter:blur(12px) saturate(130%); -webkit-backdrop-filter:blur(12px) saturate(130%); }
+.glass-15{ background:var(--white-15); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); }
+
+@media (prefers-reduced-transparency: reduce){
+  .glass-45,.glass-30,.glass-20,.glass-15{ backdrop-filter:none; -webkit-backdrop-filter:none; background:#241a19; }
+}
+
+/* ---------- buttons ---------- */
+.btn{ display:inline-flex; align-items:center; justify-content:center; gap:8px; border:none; border-radius:var(--radius-sm); padding:10px 16px; font-weight:700; font-size:13.5px; transition:transform .12s ease, background .15s ease; }
+.btn:active{ transform:scale(.97); }
+.btn-primary{ background:var(--red); color:#fff; }
+.btn-primary:hover{ background:var(--red-dark); }
+.btn-ghost{ background:var(--white-15); color:#fff; }
+.btn-ghost:hover{ background:rgba(255,255,255,.24); }
+.btn-sm{ padding:7px 12px; font-size:12.5px; }
+.btn:disabled{ opacity:.5; cursor:default; }
+
+.icon-btn{ width:38px; height:38px; border-radius:50%; border:none; background:var(--white-15); color:#fff; display:inline-flex; align-items:center; justify-content:center; position:relative; }
+.icon-btn:hover{ background:rgba(255,255,255,.24); }
+.badge-dot{ position:absolute; top:4px; right:4px; width:8px; height:8px; border-radius:50%; background:var(--danger); }
+
+/* ---------- pills ---------- */
+.pill{ display:inline-flex; align-items:center; padding:4px 10px; border-radius:999px; font-size:11px; font-weight:700; letter-spacing:.02em; }
+.pill-accent{ background:rgba(59,165,93,.22); color:#7bd696; }
+.pill-amber{ background:rgba(217,164,65,.22); color:#f0c375; }
+.pill-blue{ background:rgba(74,134,201,.22); color:#8fc0ee; }
+.pill-muted{ background:var(--white-15); color:var(--ink-70); }
+
+/* ---------- inputs ---------- */
+.input-glass{ background:var(--white-15); border:1px solid transparent; border-radius:var(--radius-sm); padding:10px 14px; color:#fff; outline:none; }
+.input-glass::placeholder{ color:var(--ink-50); }
+.input-glass:focus{ border-color:rgba(255,255,255,.35); }
+
+/* ---------- avatars ---------- */
+.avatar{ width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; color:#fff; flex-shrink:0; overflow:hidden; background:var(--red); }
+.avatar img{ width:100%; height:100%; object-fit:cover; }
+.avatar-lg{ width:48px; height:48px; font-size:15px; }
+.avatar-photo{ background:#333; }
+
+/* palette for clients without a real photo — cycles by index */
+.av-0{ background:#C0392B; } .av-1{ background:#D9852B; } .av-2{ background:#2E8B57; }
+.av-3{ background:#2E5FA3; } .av-4{ background:#8E44AD; }
+
+/* ---------- progress bar ---------- */
+.progress-track{ height:6px; border-radius:6px; background:rgba(255,255,255,.15); overflow:hidden; }
+.progress-fill{ height:100%; border-radius:6px; background:var(--ok); transition:width .4s ease; }
+.progress-fill.warn{ background:var(--warn); }
+.progress-fill.danger{ background:var(--danger); }
+
+/* ---------- toast ---------- */
+#toast{ position:fixed; left:50%; bottom:26px; transform:translateX(-50%) translateY(20px); background:#1c1414; color:#fff; padding:11px 18px; border-radius:var(--radius-sm); font-size:13px; box-shadow:var(--shadow-1); opacity:0; pointer-events:none; transition:all .25s ease; z-index:200; border:1px solid var(--hairline); }
+#toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+/* ---------- empty state ---------- */
+.empty-state{ padding:22px 10px; text-align:center; color:var(--ink-50); font-size:13px; }
+
+/* ---------- error banner ---------- */
+.err-banner{ display:none; background:rgba(217,83,79,.18); color:#f3a6a3; border:1px solid rgba(217,83,79,.4); border-radius:var(--radius-sm); padding:9px 12px; font-size:12.5px; margin:0 0 10px; }
