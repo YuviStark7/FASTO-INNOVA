@@ -1,13 +1,16 @@
 /* ============================================================
    FASTO INNOVA — App (state, screens, Brain 1 orchestration)
    Engine (core.js / data.js) is unchanged from the tested v0.2
-   build. This file wires that engine to the new Figma-sourced
-   UI: multi-chat Fasto-AI screen, two-pane Clients screen, and
-   a Research Progress table on the Dashboard. No flow-diagram
-   panel and no Guardian log sheet in this design — Brain 3
-   still validates every message and profile, just without a
-   dedicated viewer (per your call — matches the Figma file
-   exactly; check DevTools console for a live Guardian trace).
+   build. Persistence is Supabase (see js/supabase-client.js):
+   every farmer signs in, and their chats/messages/matches/
+   outreach are saved to and loaded from the database, scoped to
+   them by Row Level Security. The buyer database is fetched live
+   from Supabase too (data.js's copy is kept only as an offline
+   fallback if that fetch fails).
+   No flow-diagram panel and no Guardian log sheet in this design
+   — Brain 3 still validates every message and profile, just
+   without a dedicated viewer (matches the Figma file exactly;
+   check DevTools console for a live Guardian trace).
    ============================================================ */
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -15,9 +18,10 @@ const CAT_LABEL = { verdure:"vegetables", pomodori:"tomatoes", frutta:"fruit", l
 
 let state = {
   apiKey: "", model: "claude-haiku-4-5-20251001", offline: true,
+  farmerId: null, isAdmin: false,
   chats: [],           // {id,title,phase,pct,messages:[{role,text}],apiMessages,profile,candidates,recs,offlineStep,offlineReady,ts}
   activeChatId: null,
-  clients: [],          // matched-buyer threads (Clients screen)
+  clients: [],          // matched-buyer threads (Clients screen) — backed by the outreach table
   glog: [],
   screen: "dashboard",
   activeClientId: null,
@@ -85,6 +89,7 @@ function toast(msg) { const t = $("toast"); t.textContent = msg; t.classList.add
 function setTyping(on) { const t = $("typingInd"); if (t) t.style.display = on ? "block" : "none"; const b = $("sendBtn"); if (b) b.disabled = on; }
 function showErr(msg) { const b = $("errBanner"); if (!b) return; b.textContent = msg; b.style.display = "block"; }
 function clearErr() { const b = $("errBanner"); if (b) b.style.display = "none"; }
+function isLocalId(id) { return String(id).startsWith("local"); } // true when a DB write failed and we fell back to a client-only id
 
 function addLog(level, msg) {
   const t = new Date().toTimeString().slice(0, 8);
@@ -113,10 +118,73 @@ async function callClaude(system, messages, tools, maxTokens, forceTool) {
   return data;
 }
 
+/* ================= ACCOUNT DATA (Supabase) ================= */
+async function loadBuyers() {
+  try {
+    const { data, error } = await DataStore.listBuyers();
+    if (error || !data || !data.length) throw error || new Error("empty buyers table");
+    DB.buyers = data.filter(b => !b.is_channel);
+    DB.channels = data.filter(b => b.is_channel);
+  } catch (e) {
+    console.warn("Using the bundled offline buyer copy — live fetch from Supabase failed:", e);
+  }
+}
+
+async function loadFarmerData(uid) {
+  const [{ data: farmer }, { data: chatRows }, { data: outreachRows }] = await Promise.all([
+    DataStore.getMyFarmer(uid),
+    DataStore.listMyChats(uid),
+    DataStore.listMyOutreach(uid)
+  ]);
+  state.isAdmin = !!(farmer && farmer.is_admin);
+
+  state.chats = [];
+  for (const row of (chatRows || [])) {
+    const [{ data: msgs }, { data: prods }] = await Promise.all([
+      DataStore.listMessages(row.id),
+      DataStore.listProducts(row.id)
+    ]);
+    const hasProfile = !!(row.village || row.organic || (prods && prods.length));
+    state.chats.push({
+      id: row.id, title: row.title, phase: row.phase, pct: row.pct,
+      messages: (msgs || []).map(m => ({ role: m.role, text: m.text, ts: new Date(m.created_at).getTime() })),
+      apiMessages: [], // Claude's own conversation context resets each session — only the visible transcript persists
+      profile: hasProfile ? {
+        farmer_name: row.farmer_name, village: row.village,
+        distance_km_from_cassino: row.distance_km_from_cassino != null ? Number(row.distance_km_from_cassino) : null, organic: row.organic,
+        available_months: row.available_months || [],
+        products: (prods || []).map(p => ({ name: p.name, category: p.category, kg_per_week: Number(p.kg_per_week) }))
+      } : null,
+      candidates: [], recs: null,
+      offlineStep: (msgs || []).length, offlineReady: (msgs || []).length >= OFFLINE_SCRIPT.length,
+      ts: new Date(row.created_at).getTime()
+    });
+  }
+  state.activeChatId = state.chats.length ? state.chats[0].id : null;
+
+  const byId = {}; DB.buyers.concat(DB.channels).forEach(b => byId[b.id] = b);
+  state.clients = (outreachRows || []).map(o => {
+    const b = byId[o.buyer_id] || {};
+    return { id: o.id, buyerId: o.buyer_id, name: b.name || o.buyer_id, type: b.type || "", zone: b.zone || "",
+      message_it: o.message_it, message_en: o.message_en, flagged: o.flagged, status: o.status,
+      ts: new Date(o.created_at).getTime(), extra: [] };
+  });
+  state.activeClientId = state.clients.length ? state.clients[0].id : null;
+}
+
 /* ================= MULTI-CHAT (Fasto-AI screen) ================= */
-function newChatObj() {
-  return { id: "c" + Date.now() + Math.random().toString(36).slice(2, 6), title: "New chat", phase: "idle", pct: 0,
-    messages: [], apiMessages: [], profile: null, candidates: [], recs: null, offlineStep: 0, offlineReady: false, ts: Date.now() };
+async function newChatObj() {
+  try {
+    const { data, error } = await DataStore.createChat(state.farmerId);
+    if (error) throw error;
+    return { id: data.id, title: data.title, phase: data.phase, pct: data.pct, ts: new Date(data.created_at).getTime(),
+      messages: [], apiMessages: [], profile: null, candidates: [], recs: null, offlineStep: 0, offlineReady: false };
+  } catch (e) {
+    console.error("Couldn't create a chat in your account — continuing locally only", e);
+    toast("Couldn't save this chat to your account — it will only last this session.");
+    return { id: "local" + Date.now() + Math.random().toString(36).slice(2, 6), title: "New chat", phase: "interview", pct: 0, ts: Date.now(),
+      messages: [], apiMessages: [], profile: null, candidates: [], recs: null, offlineStep: 0, offlineReady: false };
+  }
 }
 function activeChat() { return state.chats.find(c => c.id === state.activeChatId) || null; }
 function chatTitle(chat) {
@@ -125,8 +193,8 @@ function chatTitle(chat) {
   return "New chat";
 }
 
-function startNewChat() {
-  const chat = newChatObj();
+async function startNewChat() {
+  const chat = await newChatObj();
   state.chats.unshift(chat);
   state.activeChatId = chat.id;
   const greet = state.offline
@@ -149,6 +217,7 @@ function renderChatRail() {
 function addMsg(chat, role, text) {
   chat.messages.push({ role, text, ts: Date.now() });
   if (chat.id === state.activeChatId) renderTranscript();
+  if (!isLocalId(chat.id)) DataStore.addMessage(chat.id, role, text).catch(e => console.error("message save failed", e));
 }
 function renderTranscript() {
   const chat = activeChat();
@@ -221,12 +290,23 @@ async function onProfileCaptured(raw, chat) {
   if (chat.id === state.activeChatId) updateHeaderIdentity();
   renderChatRail(); renderDashboard();
 
+  if (!isLocalId(chat.id)) {
+    DataStore.updateChat(chat.id, {
+      phase: "matching", pct: 45, title: chat.title,
+      farmer_name: v.profile.farmer_name || null, village: v.profile.village || null,
+      distance_km_from_cassino: v.profile.distance_km_from_cassino ?? null,
+      organic: v.profile.organic || null, available_months: v.profile.available_months || []
+    }).catch(e => console.error("chat update failed", e));
+    DataStore.saveProducts(chat.id, v.profile.products).catch(e => console.error("products save failed", e));
+    if (v.profile.farmer_name) DataStore.updateFarmerName(state.farmerId, v.profile.farmer_name).catch(e => console.error("farmer name save failed", e));
+  }
+
   const month = new Date().getMonth() + 1;
   const ranked = rankMatches(v.profile, DB, month);
   chat.candidates = ranked.slice(0, 8);
   addLog("info", "Brain 2 · scored " + ranked.length + " database entries, top score " + ranked[0].score + "/100");
 
-  if (state.offline) { finishWithRecs(offlineRecs(chat), chat); return; }
+  if (state.offline) { await finishWithRecs(offlineRecs(chat), chat); return; }
 
   addMsg(chat, "sys", "Brain 2 is analysing " + ranked.length + " verified Cassino buyers…");
   setTyping(true);
@@ -240,7 +320,7 @@ async function onProfileCaptured(raw, chat) {
     addLog("info", "Brain 2 → Guardian · recommendations handoff");
     const check = guardianVerifyRecs(tu.input, chat.candidates.map(c => c.id), chat.profile);
     check.issues.forEach(i => addLog(i.level, "Guardian · " + i.msg));
-    finishWithRecs(check.verified, chat);
+    await finishWithRecs(check.verified, chat);
     addMsg(chat, "ai", "Done! I found the best matches for you — check Clients for the outreach draft.");
   } catch (e) {
     setTyping(false);
@@ -249,22 +329,40 @@ async function onProfileCaptured(raw, chat) {
   }
 }
 
-function finishWithRecs(recs, chat) {
+async function finishWithRecs(recs, chat) {
   chat.recs = recs;
   chat.phase = "done"; chat.pct = 100;
-  addClientFromRecs(recs, chat);
+  if (!isLocalId(chat.id)) {
+    DataStore.updateChat(chat.id, { phase: "done", pct: 100 }).catch(e => console.error("chat update failed", e));
+    if (recs.ranked && recs.ranked.length) DataStore.saveMatches(chat.id, recs.ranked).catch(e => console.error("matches save failed", e));
+  }
+  await addClientFromRecs(recs, chat);
   renderDashboard();
   renderChats();
 }
 
 /* ---------- Clients ("chats with clients") ---------- */
-function addClientFromRecs(recs, chat) {
+async function addClientFromRecs(recs, chat) {
   if (!recs.outreach) return;
   const c = chat.candidates.find(x => x.id === recs.outreach.buyer_id); if (!c) return;
   const existing = state.clients.find(x => x.buyerId === c.id && x.status === "draft");
-  if (existing) { existing.message_it = recs.outreach.message_it; existing.message_en = recs.outreach.message_en; existing.flagged = !!recs.outreach.flagged_claim; return; }
+  if (existing) {
+    existing.message_it = recs.outreach.message_it; existing.message_en = recs.outreach.message_en; existing.flagged = !!recs.outreach.flagged_claim;
+    if (!isLocalId(existing.id)) {
+      DataStore.updateOutreach(existing.id, { message_it: existing.message_it, message_en: existing.message_en, flagged: existing.flagged }).catch(e => console.error(e));
+    }
+    return;
+  }
+  let outreachId = "local" + Date.now();
+  if (!isLocalId(chat.id)) {
+    try {
+      const { data, error } = await DataStore.createOutreach(state.farmerId, chat.id, c.id, recs.outreach.message_it, recs.outreach.message_en, !!recs.outreach.flagged_claim);
+      if (error) throw error;
+      outreachId = data.id;
+    } catch (e) { console.error("outreach save failed", e); toast("Couldn't save the outreach draft to your account."); }
+  }
   state.clients.unshift({
-    id: "cl" + Date.now(), buyerId: c.id, name: c.name, type: c.type, zone: c.zone,
+    id: outreachId, buyerId: c.id, name: c.name, type: c.type, zone: c.zone,
     message_it: recs.outreach.message_it, message_en: recs.outreach.message_en,
     flagged: !!recs.outreach.flagged_claim, status: "draft", ts: Date.now(), extra: []
   });
@@ -275,6 +373,7 @@ function markSent(id) {
   c.status = "sent"; c.sentTs = Date.now();
   toast("Marked as sent to " + c.name);
   renderChats(); renderDashboard();
+  if (!isLocalId(id)) DataStore.updateOutreach(id, { status: "sent", sent_at: new Date().toISOString() }).catch(e => console.error(e));
 }
 
 /* ---------- Header identity ---------- */
@@ -391,6 +490,8 @@ function renderThread() {
   $("clientInput").addEventListener("keydown", e => { if (e.key === "Enter") sendClientNote(c.id); });
 }
 function sendClientNote(id) {
+  // Kept local-only for now (no dedicated table yet) — a real, user-authored
+  // follow-up note, never a fabricated buyer reply.
   const input = $("clientInput"); if (!input) return;
   const text = input.value.trim(); if (!text) return;
   const c = state.clients.find(x => x.id === id); if (!c) return;
@@ -400,6 +501,46 @@ function sendClientNote(id) {
 }
 function copyClientMsg(id) { const c = state.clients.find(x => x.id === id); if (c) { navigator.clipboard.writeText(c.message_it); toast("Copied"); } }
 
+/* ---------- Admin (visible only when the signed-in farmer is flagged is_admin) ---------- */
+async function renderAdmin() {
+  if (!$("adminScreen") || !state.isAdmin) return;
+  const [{ data: farmers, error: e1 }, { data: chats, error: e2 }, { data: outreach, error: e3 }] = await Promise.all([
+    DataStore.listAllFarmers(), DataStore.listAllChats(), DataStore.listAllOutreach()
+  ]);
+  if (e1 || e2 || e3) { console.error("admin load failed", e1, e2, e3); toast("Couldn't load admin overview."); return; }
+
+  const farmerById = {}; (farmers || []).forEach(f => farmerById[f.id] = f);
+  const outreachByChat = {};
+  (outreach || []).forEach(o => { if (o.chat_id) (outreachByChat[o.chat_id] = outreachByChat[o.chat_id] || []).push(o); });
+  const sentCount = (outreach || []).filter(o => o.status === "sent").length;
+
+  $("adminStats").innerHTML = [
+    `<span class="pill pill-blue">${(farmers || []).length} farmers</span>`,
+    `<span class="pill pill-accent">${(chats || []).length} conversations</span>`,
+    `<span class="pill pill-amber">${(outreach || []).length} outreach drafts</span>`,
+    `<span class="pill pill-accent">${sentCount} sent</span>`
+  ].join("");
+
+  const rows = (chats || []).filter(c => c.village || c.organic || c.farmer_name);
+  $("adminBody").innerHTML = rows.map(c => {
+    const farmer = farmerById[c.farmer_id];
+    const displayName = (farmer && farmer.farmer_name) || c.farmer_name || "Unnamed farmer";
+    const outs = outreachByChat[c.id] || [];
+    const outLabel = outs.length ? outs.map(o => o.status).join(", ") : "—";
+    return `<tr>
+      <td><b>${esc(displayName)}</b></td>
+      <td class="rp-conv"><b>${esc(c.title)}</b><small>${esc(relDate(new Date(c.created_at).getTime()))}</small></td>
+      <td>${esc(c.village || "—")}</td>
+      <td class="rp-prog">
+        <div class="progress-track"><div class="progress-fill ${progClass(c.pct)}" style="width:${c.pct}%"></div></div>
+        <div class="prog-label">${esc(phaseLabel(c.phase))} · ${c.pct}%</div>
+      </td>
+      <td>${esc(outLabel)}</td>
+    </tr>`;
+  }).join("");
+  $("adminEmpty").style.display = rows.length ? "none" : "block";
+}
+
 /* ================= NAVIGATION ================= */
 function switchScreen(name) {
   state.screen = name;
@@ -408,6 +549,7 @@ function switchScreen(name) {
   if (name === "dashboard") renderDashboard();
   if (name === "clients") renderChats();
   if (name === "assistant") { renderChatRail(); renderTranscript(); }
+  if (name === "admin") renderAdmin();
 }
 
 /* ================= Offline scripted demo ================= */
@@ -452,35 +594,99 @@ function boot() {
   const saved = localStorage.getItem("fasto_key");
   if (saved) $("apikey").value = saved;
 
+  /* ---- account: sign in / sign up ---- */
+  let authMode = "in";
+  function setAuthMode(next) {
+    authMode = next;
+    $("authTabIn").classList.toggle("active", next === "in");
+    $("authTabUp").classList.toggle("active", next === "up");
+    $("authSubmitBtn").textContent = next === "up" ? "Create account" : "Sign in";
+    $("authHint").textContent = next === "up"
+      ? "Already have an account? Switch to Sign in above."
+      : "New here? Switch to Sign up above — it only takes an email and a password.";
+    $("authErr").style.display = "none";
+  }
+  $("authTabIn").onclick = () => setAuthMode("in");
+  $("authTabUp").onclick = () => setAuthMode("up");
+
+  function goToModeCard() { $("authCard").style.display = "none"; $("modeCard").style.display = "block"; }
+
+  $("authSubmitBtn").onclick = async () => {
+    const email = $("authEmail").value.trim();
+    const password = $("authPassword").value;
+    const errBox = $("authErr"); errBox.style.display = "none";
+    if (!email || !password) { errBox.textContent = "Enter an email and a password."; errBox.style.display = "block"; return; }
+    if (password.length < 6) { errBox.textContent = "Password must be at least 6 characters."; errBox.style.display = "block"; return; }
+    $("authSubmitBtn").disabled = true;
+    try {
+      const { data, error } = authMode === "up" ? await DataStore.signUp(email, password) : await DataStore.signIn(email, password);
+      if (error) throw error;
+      if (!data.session) {
+        errBox.textContent = "Check your email to confirm your account, then sign in.";
+        errBox.style.display = "block";
+      } else {
+        state.farmerId = data.user.id;
+        goToModeCard();
+      }
+    } catch (e) {
+      errBox.textContent = e.message || "Something went wrong.";
+      errBox.style.display = "block";
+    }
+    $("authSubmitBtn").disabled = false;
+  };
+
+  // returning visitor with a live browser session skips straight past sign-in
+  DataStore.getSession().then(session => {
+    if (session && session.user) { state.farmerId = session.user.id; goToModeCard(); }
+  }).catch(e => console.error("session check failed", e));
+
+  /* ---- demo mode: offline vs live AI (unchanged) ---- */
   let mode = "offline";
   $("modeOffline").onclick = () => { mode = "offline"; $("modeOffline").classList.add("active"); $("modeLive").classList.remove("active"); $("liveKeyBlock").style.display = "none"; };
   $("modeLive").onclick = () => { mode = "live"; $("modeLive").classList.add("active"); $("modeOffline").classList.remove("active"); $("liveKeyBlock").style.display = "block"; };
 
-  $("startBtn").onclick = () => {
+  $("startBtn").onclick = async () => {
     state.offline = (mode === "offline");
     state.apiKey = $("apikey").value.trim();
     state.model = $("model").value;
     if (!state.offline && !state.apiKey.startsWith("sk-ant")) { alert("Paste a valid Anthropic API key (starts with sk-ant), or switch to Offline mode."); return; }
     if (!state.offline && $("remember").checked) localStorage.setItem("fasto_key", state.apiKey);
 
+    const btn = $("startBtn"); const label = btn.textContent;
+    btn.disabled = true; btn.textContent = "Loading your account…";
+    try {
+      await loadBuyers();
+      await loadFarmerData(state.farmerId);
+    } catch (e) {
+      console.error("Failed to load account data", e);
+      toast("Couldn't load your saved data — starting fresh.");
+    }
+    btn.disabled = false; btn.textContent = label;
+
     $("onboard").style.display = "none";
     $("app").classList.add("ready");
     $("modePill").textContent = state.offline ? "Offline demo" : ("Live · " + (state.model.includes("haiku") ? "Haiku 4.5" : "Sonnet 5"));
     addLog("ok", "Guardian armed. Database loaded: " + DB.buyers.length + " buyers + " + DB.channels.length + " channels (Cassino).");
     addLog("info", "Guardian watching all traffic Brain 1 ⇄ Brain 2.");
+    $("adminNavItem").style.display = state.isAdmin ? "flex" : "none";
 
-    startNewChat();
+    if (state.chats.length) { state.activeChatId = state.chats[0].id; updateHeaderIdentity(); renderChatRail(); renderTranscript(); }
+    else { await startNewChat(); }
+
     switchScreen("dashboard");
     renderChats();
   };
 
+  // Nav
   document.querySelectorAll(".nav-item[data-screen]").forEach(el => el.onclick = () => switchScreen(el.dataset.screen));
   $("newChatBtn").onclick = () => startNewChat();
 
+  // Chat
   $("sendBtn").onclick = () => { const v = $("userInput").value.trim(); if (v) { $("userInput").value = ""; sendUserMessage(v); } };
   $("userInput").addEventListener("keydown", e => { if (e.key === "Enter") $("sendBtn").onclick(); });
   document.querySelectorAll(".sugg-chip").forEach(ch => ch.onclick = () => { $("userInput").value = ch.dataset.fill; $("userInput").focus(); });
 
+  // Search (filters clients list + dashboard research rows)
   $("topSearch").addEventListener("input", e => {
     const q = e.target.value.trim().toLowerCase();
     if (state.screen === "clients") {
@@ -490,8 +696,17 @@ function boot() {
     }
   });
 
+  // Notification bell -> jump to clients
   $("bellBtn").onclick = () => { switchScreen("clients"); toast(state.clients.filter(c => c.status === "draft").length + " draft(s) ready to send"); };
-  $("profileBtn").onclick = () => { if (confirm("Restart the demo? This clears the current session.")) location.reload(); };
+
+  // Avatar -> sign out (data stays in the account; this just clears the local view)
+  $("profileBtn").onclick = async () => {
+    if (!confirm("Sign out and restart? Your saved data stays in your account for next time.")) return;
+    try { await DataStore.signOut(); } catch (e) { console.error("sign out failed", e); }
+    localStorage.removeItem("fasto_key");
+    location.reload();
+  };
+
   $("researchSeeAll").onclick = () => { state.showAllResearch = !state.showAllResearch; renderDashboard(); };
 
   renderDashboard();
